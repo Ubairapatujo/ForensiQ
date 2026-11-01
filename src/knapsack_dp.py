@@ -1,108 +1,122 @@
 
 def multiple_knapsack_dp(evidence, analysts):
     """
-    Allocate evidence among analysts using Dynamic Programming.
+    Allocate evidence among 1 to 3 analysts using
+    Dynamic Programming.
     """
 
-    # Get analyst capacities
+    # Validate number of analysts
+    k = len(analysts)
+
+    if k < 1 or k > 3:
+        raise ValueError("The system supports 1 to 3 analysts.")
+
+    # Validate analyst names
+    if analysts["analyst_name"].duplicated().any():
+        raise ValueError("Duplicate analyst names are not allowed.")
+
+    # Extract input data
     capacities = analysts["capacity_hours"].tolist()
-
-    # Get evidence examination hours
     weights = evidence["examination_hours"].tolist()
-
-    # Get evidence estimated values
     values = evidence["estimated_value"].tolist()
 
-    # Count evidence items and analysts
     n = len(evidence)
-    k = len(analysts)
+
+    # Validate capacities
+    if any(capacity < 0 for capacity in capacities):
+        raise ValueError("Analyst capacities cannot be negative.")
+
+    # Validate evidence hours and values
+    if any(weight < 0 for weight in weights):
+        raise ValueError("Evidence examination hours cannot be negative.")
+
+    if any(value < 0 for value in values):
+        raise ValueError("Evidence values cannot be negative.")
 
     print("Number of evidence items:", n)
     print("Number of analysts:", k)
     print("Analyst capacities:", capacities)
 
-    # Create the DP table
-    dp = {}
-    dp[(0, 0, 0, 0)] = 0
+    # State = tuple of used hours for each analyst
+    initial_state = tuple(0 for _ in range(k))
 
-    # Store previous states and decisions for backtracking
+    dp = {initial_state: 0}
     parent = {}
 
-    # Process each evidence item
     for i in range(n):
 
         weight = weights[i]
         value = values[i]
 
-        # Store new DP states
         new_dp = {}
 
-        # Check all previous states
-        for state, current_value in dp.items():
+        for used_hours, current_value in dp.items():
 
-            _, c1, c2, c3 = state
+            # Option 1: Skip current evidence
+            skip_state = (i + 1, *used_hours)
 
-            # Option 1: Skip the evidence
-            new_state = (i + 1, c1, c2, c3)
+            if (
+                used_hours not in new_dp
+                or current_value > new_dp[used_hours]
+            ):
+                new_dp[used_hours] = current_value
 
-            if new_state not in new_dp or current_value > new_dp[new_state]:
-                new_dp[new_state] = current_value
-                parent[new_state] = (state, i, None)
+                parent[skip_state] = (
+                    (i, *used_hours), None
+                )
 
-            # Option 2: Assign to Analyst A
-            if c1 + weight <= capacities[0]:
+            # Option 2: Assign evidence to one analyst
+            for j in range(k):
 
-                new_state = (i + 1, c1 + weight, c2, c3)
-                new_value = current_value + value
+                if used_hours[j] + weight <= capacities[j]:
 
-                if new_state not in new_dp or new_value > new_dp[new_state]:
-                    new_dp[new_state] = new_value
-                    parent[new_state] = (state, i, 0)
+                    updated_hours = list(used_hours)
+                    updated_hours[j] += weight
+                    updated_hours = tuple(updated_hours)
 
-            # Option 3: Assign to Analyst B
-            if c2 + weight <= capacities[1]:
+                    new_value = current_value + value
 
-                new_state = (i + 1, c1, c2 + weight, c3)
-                new_value = current_value + value
+                    new_state = (i + 1, *updated_hours)
 
-                if new_state not in new_dp or new_value > new_dp[new_state]:
-                    new_dp[new_state] = new_value
-                    parent[new_state] = (state, i, 1)
+                    if (
+                        updated_hours not in new_dp
+                        or new_value > new_dp[updated_hours]
+                    ):
+                        new_dp[updated_hours] = new_value
 
-            # Option 4: Assign to Analyst C
-            if c3 + weight <= capacities[2]:
+                        parent[new_state] = (
+                            (i, *used_hours), j
+                        )
 
-                new_state = (i + 1, c1, c2, c3 + weight)
-                new_value = current_value + value
-
-                if new_state not in new_dp or new_value > new_dp[new_state]:
-                    new_dp[new_state] = new_value
-                    parent[new_state] = (state, i, 2)
-
-        # Update DP table
         dp = new_dp
 
-    # Find the state with maximum evidence value
-    best_state = max(dp, key=dp.get)
-    maximum_value = dp[best_state]
+    # Find the state with maximum total value
+    best_used_hours = max(dp, key=dp.get)
 
-    # Create an empty allocation for each analyst
+    maximum_value = dp[best_used_hours]
+
+    best_state = (n, *best_used_hours)
+
+    # Prepare analyst allocation
     allocation = {
         analysts.iloc[j]["analyst_name"]: []
         for j in range(k)
     }
 
-    # Backtracking: trace decisions from the best state
+    # Backtrack to reconstruct assignments
     current_state = best_state
 
     while current_state[0] > 0:
 
-        previous_state, item_index, analyst_index = parent[current_state]
+        previous_state, analyst_index = parent[current_state]
 
-        # If the item was assigned, add it to that analyst
         if analyst_index is not None:
 
-            analyst_name = analysts.iloc[analyst_index]["analyst_name"]
+            analyst_name = analysts.iloc[
+                analyst_index
+            ]["analyst_name"]
+
+            item_index = current_state[0] - 1
 
             allocation[analyst_name].append(
                 evidence.iloc[item_index].to_dict()
@@ -110,7 +124,7 @@ def multiple_knapsack_dp(evidence, analysts):
 
         current_state = previous_state
 
-    # Reverse allocations to restore original evidence order
+    # Restore original evidence order
     for analyst_name in allocation:
         allocation[analyst_name].reverse()
 

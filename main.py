@@ -1,6 +1,6 @@
 
 from src.data_loader import prepare_data
-from src.kruskal import kruskal_mst, find_reachable_assets
+from src.kruskal import kruskal_msf, find_reachable_assets
 from src.knapsack_dp import multiple_knapsack_dp
 
 
@@ -8,7 +8,7 @@ from src.knapsack_dp import multiple_knapsack_dp
 assets, links, analysts, evidence = prepare_data()
 
 # Run Kruskal's algorithm
-selected_links, total_cost = kruskal_mst(assets, links)
+selected_links, total_cost = kruskal_msf(assets, links)
 
 # Display selected connections
 print("\n----- KRUSKAL ALGORITHM RESULTS -----")
