@@ -1,6 +1,15 @@
 from flask import Blueprint, request, jsonify
 from app import db
 from app.models import Investigation, Asset, Link, Evidence, Analyst
+
+from src.database_adapter import (
+    convert_to_dataframes,
+    execute_kruskal_analysis,
+    execute_knapsack_analysis,
+    execute_simulation,
+    execute_sensitivity_analysis
+)
+
 main = Blueprint("main", __name__)
 
 
@@ -1085,3 +1094,192 @@ def delete_analyst(investigation_id, analyst_id):
     return jsonify({
         "message": "Analyst deleted successfully"
     }), 200
+# ==============================
+# ALGORITHM EXECUTION API
+# ==============================
+
+@main.route(
+    "/api/investigations/<int:investigation_id>/run-analysis",
+    methods=["POST"]
+)
+def run_analysis(investigation_id):
+
+    investigation = db.session.get(
+        Investigation, investigation_id
+    )
+
+    if investigation is None:
+        return jsonify({"error": "Investigation not found"}), 404
+
+    assets = Asset.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    links = Link.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    evidence = Evidence.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    analysts = Analyst.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    if not 1 <= len(analysts) <= 3:
+        return jsonify({
+            "error": "Investigation must have 1 to 3 analysts"
+        }), 400
+
+    try:
+        assets_df, links_df, evidence_df, analysts_df = (
+            convert_to_dataframes(
+                assets, links, evidence, analysts
+            )
+        )
+
+        network_result = execute_kruskal_analysis(
+            assets_df, links_df
+        )
+
+        reachable = network_result["reachable_assets"]
+
+        eligible_evidence_df = evidence_df[
+            evidence_df["asset_id"].isin(reachable)
+        ]
+
+        knapsack_result = execute_knapsack_analysis(
+            eligible_evidence_df, analysts_df
+        )
+
+        return jsonify({
+            "message": "Algorithm analysis completed successfully",
+            "selected_links": network_result["selected_links"],
+            "total_access_cost": network_result["total_cost"],
+            "reachable_assets": reachable,
+            "unreachable_assets": network_result["unreachable_assets"],
+            "eligible_evidence": eligible_evidence_df.to_dict(
+                orient="records"
+            ),
+            "maximum_evidence_value": knapsack_result["maximum_value"],
+            "allocation": knapsack_result["allocation"]
+        }), 200
+
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    # ==============================
+# LINK FAILURE SIMULATION API
+# ==============================
+
+@main.route(
+    "/api/investigations/<int:investigation_id>/simulate",
+    methods=["POST"]
+)
+def run_simulation(investigation_id):
+
+    investigation = db.session.get(
+        Investigation, investigation_id
+    )
+
+    if investigation is None:
+        return jsonify({"error": "Investigation not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    failed_link_ids = data.get("failed_link_ids")
+
+    if not isinstance(failed_link_ids, list):
+        return jsonify({
+            "error": "failed_link_ids must be a list"
+        }), 400
+
+    assets = Asset.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    links = Link.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    try:
+        assets_df, links_df, _, _ = convert_to_dataframes(
+            assets, links, [], []
+        )
+
+        result = execute_simulation(
+            assets_df,
+            links_df,
+            failed_link_ids
+        )
+
+        return jsonify({
+            "message": "Link failure simulation completed successfully",
+            "failed_link_ids": result["failed_link_ids"],
+            "updated_forest": result["updated_forest"],
+            "updated_cost": result["updated_cost"],
+            "reachable_assets": result["reachable_assets"],
+            "unreachable_assets": result["unreachable_assets"]
+        }), 200
+
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    # ==============================
+# SENSITIVITY ANALYSIS API
+# ==============================
+
+@main.route(
+    "/api/investigations/<int:investigation_id>/sensitivity",
+    methods=["POST"]
+)
+def run_sensitivity(investigation_id):
+
+    investigation = db.session.get(
+        Investigation, investigation_id
+    )
+
+    if investigation is None:
+        return jsonify({"error": "Investigation not found"}), 404
+
+    assets = Asset.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    links = Link.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    evidence = Evidence.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    analysts = Analyst.query.filter_by(
+        investigation_id=investigation_id
+    ).all()
+
+    try:
+        assets_df, links_df, evidence_df, analysts_df = (
+            convert_to_dataframes(
+                assets, links, evidence, analysts
+            )
+        )
+
+        result = execute_sensitivity_analysis(
+            assets_df,
+            links_df,
+            analysts_df,
+            evidence_df
+        )
+
+        return jsonify({
+            "message": "Sensitivity analysis completed successfully",
+            "removed_assets": result["removed_assets"],
+            "total_access_cost": result["total_cost"],
+            "selected_links": result["selected_links"],
+            "reachable_assets": result["reachable_assets"],
+            "unreachable_assets": result["unreachable_assets"],
+            "maximum_evidence_value": result["maximum_value"],
+            "allocation": result["allocation"]
+        }), 200
+
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
