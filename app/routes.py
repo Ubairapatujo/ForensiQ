@@ -201,6 +201,24 @@ def create_asset(investigation_id):
     if existing:
         return jsonify({"error": "Asset ID already exists"}), 409
 
+    # Enforce exactly one root asset per investigation.
+    existing_root = Asset.query.filter_by(
+        investigation_id=investigation_id,
+        is_root=True
+    ).first()
+
+    existing_assets = Asset.query.filter_by(
+        investigation_id=investigation_id
+    ).first()
+
+    if existing_assets is None and is_root is False:
+        return jsonify({
+            "error": "The first asset must be the root asset"
+        }), 400
+
+    if is_root and existing_root:
+        existing_root.is_root = False
+
     asset = Asset(
         investigation_id=investigation_id,
         asset_id=asset_id.strip(),
@@ -293,9 +311,41 @@ def update_asset(investigation_id, asset_id):
         asset.importance_score = value
 
     if "is_root" in data:
-        if type(data["is_root"]) is not bool:
-            return jsonify({"error": "is_root must be true or false"}), 400
-        asset.is_root = data["is_root"]
+        new_root_status = data["is_root"]
+
+        if type(new_root_status) is not bool:
+            return jsonify({
+                "error": "is_root must be true or false"
+            }), 400
+
+        if new_root_status:
+            # Selecting a new root automatically demotes the old root.
+            existing_root = Asset.query.filter(
+                Asset.investigation_id == investigation_id,
+                Asset.is_root.is_(True),
+                Asset.id != asset.id
+            ).first()
+
+            if existing_root:
+                existing_root.is_root = False
+
+            asset.is_root = True
+
+        else:
+            # Do not allow removing the only root.
+            other_root = Asset.query.filter(
+                Asset.investigation_id == investigation_id,
+                Asset.is_root.is_(True),
+                Asset.id != asset.id
+            ).first()
+
+            if asset.is_root and other_root is None:
+                return jsonify({
+                    "error": "An investigation must have exactly one root asset"
+                }), 400
+
+            asset.is_root = False
+    
 
     db.session.commit()
 
@@ -340,7 +390,18 @@ def delete_asset(investigation_id, asset_id):
         return jsonify({
             "error": "Cannot delete asset while links or evidence reference it"
         }), 409
+    
+    if asset.is_root:
+        other_assets = Asset.query.filter(
+            Asset.investigation_id == investigation_id,
+            Asset.id != asset.id
+        ).count()
 
+        if other_assets > 0:
+            return jsonify({
+                "error": "Select another root asset before deleting this asset"
+            }), 409
+        
     db.session.delete(asset)
     db.session.commit()
 
@@ -861,7 +922,28 @@ def create_analyst(investigation_id):
         return jsonify({
             "error": "capacity_hours must be a non-negative integer"
         }), 400
+    
+    # Maximum three analysts per investigation.
+    analyst_count = Analyst.query.filter_by(
+        investigation_id=investigation_id
+    ).count()
 
+    if analyst_count >= 3:
+        return jsonify({
+            "error": "Maximum three analysts are allowed per investigation"
+        }), 409
+
+    # Capacity must be unique within the investigation.
+    existing_capacity = Analyst.query.filter_by(
+        investigation_id=investigation_id,
+        capacity_hours=capacity
+    ).first()
+
+    if existing_capacity:
+        return jsonify({
+            "error": "Each analyst must have a unique capacity"
+        }), 409
+    
     existing = Analyst.query.filter_by(
         investigation_id=investigation_id,
         analyst_id=analyst_id.strip()
@@ -960,6 +1042,17 @@ def update_analyst(investigation_id, analyst_id):
             return jsonify({
                 "error": "capacity_hours must be a non-negative integer"
             }), 400
+
+        existing_capacity = Analyst.query.filter(
+            Analyst.investigation_id == investigation_id,
+            Analyst.capacity_hours == capacity,
+            Analyst.id != analyst.id
+        ).first()
+
+        if existing_capacity:
+            return jsonify({
+                "error": "Each analyst must have a unique capacity"
+            }), 409
 
         analyst.capacity_hours = capacity
 
