@@ -6,3 +6,15 @@ env/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+venv/
+
+# SQLite database
+instance/
+*.db
