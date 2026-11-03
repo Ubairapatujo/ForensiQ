@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from app import db
 from app.models import Investigation, Asset, Link, Evidence, Analyst
 
@@ -11,6 +11,10 @@ from src.database_adapter import (
 )
 
 main = Blueprint("main", __name__)
+# HOMEPAGE
+@main.route("/")
+def home():
+    return render_template("index.html")
 
 
 # CREATE: Add a new investigation
