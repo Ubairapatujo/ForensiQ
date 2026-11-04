@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Investigation Reports{% endblock %}
+{% block page_title %}Investigation Reports &amp; Dossiers{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .sidebar, .topbar, .page-header button, .btn, .no-print, #export-status-alert {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #FFFFFF !important;
+        color: #000000 !important;
+    }
+    .card {
+        background: #FFFFFF !important;
+        border: 1px solid #CCCCCC !important;
+        color: #000000 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+        margin-bottom: 20px !important;
+    }
+    .data-table th, .data-table td {
+        border-bottom: 1px solid #DDDDDD !important;
+        color: #000000 !important;
+    }
+    .stat-card {
+        border: 1px solid #CCCCCC !important;
+        background: #FAFAFA !important;
+    }
+    .stat-value, .card-title, h1, h2, h3, h4 {
+        color: #000000 !important;
+    }
+    .badge {
+        border: 1px solid #888888 !important;
+        color: #000000 !important;
+        background: transparent !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reports-container">
+    <!-- NO ACTIVE INVESTIGATION BANNER -->
+    <div id="rep-no-inv-banner" class="active-inv-banner" style="display: none; border-style: dashed;">
+        <div class="active-inv-meta">
+            <div class="active-inv-badge-large" style="background: rgba(248, 113, 113, 0.15); color: var(--crimson-danger); border-color: rgba(248, 113, 113, 0.3);">!</div>
+            <div class="active-inv-title-group">
+                <h3>No Active Investigation Selected</h3>
+                <p>Select an active investigation from the topbar context switcher to generate case reports.</p>
+            </div>
+        </div>
+        <div>
+            <a href="{{ url_for('main.investigations_page') }}" class="btn btn-primary btn-sm">Go to Investigations</a>
+        </div>
+    </div>
+
+    <!-- MAIN REPORTS CONTENT -->
+    <div id="rep-main-content">
+        <!-- PAGE HEADER & ACTION CONTROLS -->
+        <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+            <div>
+                <h1 class="page-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Comprehensive Forensic Case Dossier
+                </h1>
+                <p class="page-description">
+                    Executive summary, network topology pathways, and optimal evidence allocation schedules synthesized from real case algorithms.
+                </p>
+            </div>
+
+            <!-- ACTION CONTROLS -->
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <!-- Native Print / Save to PDF (Works now) -->
+                <button id="btn-print-report" class="btn btn-secondary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    <span>Print / Save as PDF</span>
+                </button>
+
+                <!-- CSV Export (Pending backend API) -->
+                <button id="btn-export-csv" class="btn btn-secondary" style="position: relative;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Export CSV</span>
+                    <span class="badge badge-archived" style="font-size: 0.65rem; padding: 2px 5px; margin-left: 6px;">Pending API</span>
+                </button>
+
+                <!-- PDF Server Export (Pending backend API) -->
+                <button id="btn-export-pdf" class="btn btn-primary" style="position: relative;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>Export PDF</span>
+                    <span class="badge badge-archived" style="font-size: 0.65rem; padding: 2px 5px; margin-left: 6px; background: rgba(0,0,0,0.25);">Pending API</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- EXPORT STATUS NOTICE (Transparent disclosure) -->
+        <div id="export-status-alert" class="card" style="background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.3); padding: 12px 18px; margin-bottom: 22px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-primary);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-cyan); flex-shrink: 0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span>
+                        <strong>Export API Status:</strong> Automated server-side PDF and CSV generation endpoints are currently pending backend implementation. Use the <strong>Print / Save as PDF</strong> button for full printable dossiers.
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOADING STATE -->
+        <div id="rep-loading-state" class="card" style="display: none; text-align: center; padding: 60px 24px;">
+            <div class="spinner" style="margin: 0 auto 16px; width: 44px; height: 44px;"></div>
+            <h3 style="font-size: 1.15rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Synthesizing Case Dossier...</h3>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">Compiling asset inventory, Minimum Spanning Forest results, and optimal knapsack assignments.</p>
+        </div>
+
+        <!-- REPORT DOSSIER BODY -->
+        <div id="rep-dossier-body" style="display: none;">
+            <!-- CASE IDENTITY CARD -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                            <span id="rep-meta-id" class="badge" style="background: var(--accent-cyan-dim); color: var(--accent-cyan); font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700;">
+                                CASE #--
+                            </span>
+                            <span id="rep-meta-status" class="badge badge-active">Active</span>
+                        </div>
+                        <h2 id="rep-meta-name" style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0 0 6px;">
+                            Investigation Title
+                        </h2>
+                        <p id="rep-meta-description" style="color: var(--text-muted); font-size: 0.9rem; max-width: 700px; line-height: 1.5; margin: 0;">
+                            Case description...
+                        </p>
+                    </div>
+
+                    <div style="text-align: right; font-size: 0.82rem; color: var(--text-dim);">
+                        <div>Report Generated: <strong id="rep-meta-date" style="color: var(--text-primary);">--</strong></div>
+                        <div style="margin-top: 4px;">Platform: <strong style="color: var(--accent-cyan);">ForensiQ v1.0</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXECUTIVE KPI GRID -->
+            <div class="stats-grid" style="margin-bottom: 24px;">
+                <div class="stat-card" style="padding: 16px 20px;">
+                    <div class="stat-info">
+                        <span class="stat-label">Evidentiary Yield</span>
+                        <span class="stat-value" id="rep-kpi-value" style="color: var(--accent-cyan);">0.0</span>
+                        <span class="stat-subtext">Optimal Knapsack value</span>
+                    </div>
+                    <div class="stat-icon cyan">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="padding: 16px 20px;">
+                    <div class="stat-info">
+                        <span class="stat-label">Access Cost</span>
+                        <span class="stat-value" id="rep-kpi-cost" style="color: var(--teal-success);">0.0</span>
+                        <span class="stat-subtext">Minimum Spanning Forest</span>
+                    </div>
+                    <div class="stat-icon teal">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="padding: 16px 20px;">
+                    <div class="stat-info">
+                        <span class="stat-label">DFS Reachability</span>
+                        <span class="stat-value" id="rep-kpi-reachability">0 / 0</span>
+                        <span class="stat-subtext">Connected infrastructure</span>
+                    </div>
+                    <div class="stat-icon amber">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="padding: 16px 20px;">
+                    <div class="stat-info">
+                        <span class="stat-label">Evidence Allocated</span>
+                        <span class="stat-value" id="rep-kpi-evidence">0 / 0</span>
+                        <span class="stat-subtext">Scheduled artifacts</span>
+                    </div>
+                    <div class="stat-icon teal">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXECUTIVE SUMMARY NARRATIVE -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        Executive Findings
+                    </h3>
+                </div>
+                <div id="rep-narrative-content" style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.6;">
+                    <!-- Dynamically generated narrative -->
+                </div>
+            </div>
+
+            <!-- SECTION 1: NETWORK TOPOLOGY & MST LINKS -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        Minimum Spanning Forest Pathways (Kruskal Algorithm)
+                    </h3>
+                    <p class="card-subtitle">Optimal accessible pathways traversing forensic infrastructure at minimal cost</p>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Link ID</th>
+                                <th>Source Node</th>
+                                <th style="width: 40px; text-align: center;"></th>
+                                <th>Target Node</th>
+                                <th style="width: 120px;">Traversal Cost</th>
+                                <th style="width: 130px;">Cumulative Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-mst-links-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECTION 2: ANALYST WORKLOAD & ALLOCATIONS -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Forensic Specialist Allocation Schedule (Multi-Knapsack DP)
+                    </h3>
+                    <p class="card-subtitle">Evidence assignments maximizing evidentiary value within individual hourly limits</p>
+                </div>
+
+                <div id="rep-analyst-allocations-container" style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- SECTION 3: UNASSIGNED EVIDENCE AUDIT -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title" style="color: var(--amber-warning);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Unassigned Evidence Inventory &amp; Exclusion Analysis
+                    </h3>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Evidence ID</th>
+                                <th style="width: 130px;">Source Asset</th>
+                                <th>Description</th>
+                                <th style="width: 90px;">Hours</th>
+                                <th style="width: 90px;">Value</th>
+                                <th style="width: 220px;">Exclusion Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-unassigned-evidence-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+{% endblock %}

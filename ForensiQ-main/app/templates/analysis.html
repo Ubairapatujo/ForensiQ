@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}Algorithm Analysis{% endblock %}
+{% block page_title %}Algorithm Analysis & Optimization{% endblock %}
+
+{% block extra_css %}
+<!-- Chart.js (Local offline bundle with CDN fallback) -->
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+if (typeof Chart === "undefined") {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\\/script>');
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="analysis-container">
+    <!-- NO ACTIVE INVESTIGATION BANNER -->
+    <div id="analysis-no-inv-banner" class="active-inv-banner" style="display: none; border-style: dashed;">
+        <div class="active-inv-meta">
+            <div class="active-inv-badge-large" style="background: rgba(248, 113, 113, 0.15); color: var(--crimson-danger); border-color: rgba(248, 113, 113, 0.3);">!</div>
+            <div class="active-inv-title-group">
+                <h3>No Active Investigation Selected</h3>
+                <p>Select an active investigation from the topbar context switcher to execute algorithms and view optimization metrics.</p>
+            </div>
+        </div>
+        <div>
+            <a href="{{ url_for('main.investigations_page') }}" class="btn btn-primary btn-sm">Go to Investigations</a>
+        </div>
+    </div>
+
+    <!-- MAIN ANALYSIS CONTENT -->
+    <div id="analysis-main-content">
+        <!-- PAGE HEADER & ACTION -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Optimization Engine
+                </h1>
+                <p class="page-description">
+                    Executes Kruskal's Minimum Spanning Forest (MSF), DFS Reachability analysis, and Multiple Knapsack Dynamic Programming on real case data.
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="btn-run-analysis" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <span>Run Optimization Engine</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ERROR OR PRECONDITION ALERT BOX -->
+        <div id="analysis-error-banner" class="card" style="background: var(--crimson-danger-dim); border-color: rgba(248, 113, 113, 0.4); color: var(--crimson-danger); padding: 14px 18px; margin-bottom: 22px; display: none;">
+            <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div id="analysis-error-text" style="font-size: 0.88rem; line-height: 1.4;"></div>
+            </div>
+        </div>
+
+        <!-- INITIAL PROMPT STATE (Before analysis is run) -->
+        <div id="analysis-prompt-card" class="card" style="text-align: center; padding: 48px 24px;">
+            <div class="state-icon" style="margin: 0 auto 16px; width: 64px; height: 64px; border-radius: 50%; background: var(--accent-cyan-dim); color: var(--accent-cyan); display: flex; align-items: center; justify-content: center;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+            <h2 class="state-title">Optimization Ready to Execute</h2>
+            <p class="state-desc" style="max-width: 520px; margin: 8px auto 22px;">
+                Click "Run Optimization Engine" to compute the Minimum Spanning Forest with tie-breaking rules, determine reachable evidence, and solve the Multiple Knapsack DP problem.
+            </p>
+            <button class="btn btn-primary" onclick="document.getElementById('btn-run-analysis').click()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Execute Analysis Now</span>
+            </button>
+        </div>
+
+        <!-- LOADING STATE -->
+        <div id="analysis-loading-state" class="card" style="display: none; text-align: center; padding: 60px 24px;">
+            <div class="spinner" style="margin: 0 auto 16px; width: 44px; height: 44px;"></div>
+            <h3 style="font-size: 1.15rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Computing Optimal Allocations...</h3>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">Executing Kruskal's MSF, DFS tree traversal, and Multi-Knapsack Dynamic Programming.</p>
+        </div>
+
+        <!-- RESULTS CONTAINER -->
+        <div id="analysis-results-container" style="display: none;">
+            <!-- SUMMARY STATS -->
+            <div class="stats-grid" style="margin-bottom: 24px;">
+                <div class="stat-card" style="padding: 16px 20px;">
+                    <div class="stat-info">
+                        <span class="stat-label">Total Access Cost</span>
+                        <span class="stat-value" id="res-total-cost" style="color: var(--teal-success);">0.0</span>
+                        <span class="stat-subtext">Minimum Spanning Forest</span>
+                    </div>
+                    <div class="stat-icon teal">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="padding: 16px 20px;">
+                    <div class="stat-info">
+                        <span class="stat-label">Max Evidentiary Yield</span>
+                        <span class="stat-value" id="res-max-value" style="color: var(--accent-cyan);">0.0</span>
+                        <span class="stat-subtext">Knapsack DP optimal value</span>
+                    </div>
+                    <div class="stat-icon cyan">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="padding: 16px 20px;">
+                    <div class="stat-info">
+                        <span class="stat-label">DFS Reachability</span>
+                        <span class="stat-value" id="res-reachability">0 / 0</span>
+                        <span class="stat-subtext" id="res-reachability-subtext">Assets reachable from root</span>
+                    </div>
+                    <div class="stat-icon amber">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="padding: 16px 20px;">
+                    <div class="stat-info">
+                        <span class="stat-label">Assigned Evidence</span>
+                        <span class="stat-value" id="res-evidence-ratio">0 / 0</span>
+                        <span class="stat-subtext" id="res-evidence-subtext">Items assigned to analysts</span>
+                    </div>
+                    <div class="stat-icon teal">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHART.JS VISUALIZATION PANELS -->
+            <div class="chart-grid" style="display: grid; grid-template-columns: 2fr 1.2fr; gap: 20px; margin-bottom: 26px;">
+                <!-- CHART 1: ANALYST WORKLOAD -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                                Analyst Workload vs. Available Capacity
+                            </h3>
+                            <p class="card-subtitle">Hours assigned by Multiple Knapsack DP against individual maximum limits</p>
+                        </div>
+                    </div>
+                    <div style="height: 280px; position: relative;">
+                        <canvas id="chart-analyst-workload"></canvas>
+                    </div>
+                </div>
+
+                <!-- CHART 2: EVIDENTIAL VALUE SHARE -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v10l8.5 5"/></svg>
+                                Value Harvested by Analyst
+                            </h3>
+                            <p class="card-subtitle">Distribution of evidentiary value among assigned specialists</p>
+                        </div>
+                    </div>
+                    <div style="height: 280px; position: relative;">
+                        <canvas id="chart-value-share"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 1: KRUSKAL MINIMUM SPANNING FOREST & DFS REACHABILITY -->
+            <div class="card" style="margin-bottom: 26px;">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                            Kruskal Minimum Spanning Forest &amp; DFS Traversal
+                        </h3>
+                        <p class="card-subtitle">Optimal accessible pathways selected with deterministic tie-breaking</p>
+                    </div>
+                </div>
+
+                <!-- REACHABILITY CHIPS -->
+                <div style="background-color: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 18px;">
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div>
+                            <span style="font-size: 0.76rem; text-transform: uppercase; font-weight: 700; color: var(--teal-success); letter-spacing: 0.8px;">
+                                Reachable Assets from Root (Eligible for Investigation):
+                            </span>
+                            <div id="container-reachable-chips" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+                        </div>
+
+                        <div>
+                            <span style="font-size: 0.76rem; text-transform: uppercase; font-weight: 700; color: var(--crimson-danger); letter-spacing: 0.8px;">
+                                Unreachable Assets (Disconnected / Inaccessible Pathways):
+                            </span>
+                            <div id="container-unreachable-chips" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SELECTED LINKS TABLE -->
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">Link ID</th>
+                                <th>Source Asset</th>
+                                <th style="width: 40px; text-align: center;"></th>
+                                <th>Target Asset</th>
+                                <th style="width: 130px;">Traversal Cost</th>
+                                <th style="width: 140px;">Cumulative Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-mst-links-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECTION 2: MULTIPLE KNAPSACK DP ALLOCATIONS -->
+            <div class="card" style="margin-bottom: 26px;">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            Multiple Knapsack Evidence Allocations
+                        </h3>
+                        <p class="card-subtitle">Optimal distribution of eligible digital evidence among forensic analysts</p>
+                    </div>
+                </div>
+
+                <div id="analyst-allocations-container" style="display: flex; flex-direction: column; gap: 18px;">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- SECTION 3: UNASSIGNED EVIDENCE -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title" style="color: var(--amber-warning);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            Unassigned Evidence Items
+                        </h3>
+                        <p class="card-subtitle">Artifacts excluded due to network disconnection or capacity constraints</p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 110px;">Evidence ID</th>
+                                <th style="width: 160px;">Source Asset</th>
+                                <th>Description</th>
+                                <th style="width: 110px;">Hours</th>
+                                <th style="width: 110px;">Value</th>
+                                <th style="width: 220px;">Exclusion Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-unassigned-evidence-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+{% endblock %}
