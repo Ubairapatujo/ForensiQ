@@ -81,33 +81,9 @@
                     <span>Print / Save as PDF</span>
                 </button>
 
-                <!-- CSV Export (Pending backend API) -->
-                <button id="btn-export-csv" class="btn btn-secondary" style="position: relative;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    <span>Export CSV</span>
-                    <span class="badge badge-archived" style="font-size: 0.65rem; padding: 2px 5px; margin-left: 6px;">Pending API</span>
-                </button>
+                
 
-                <!-- PDF Server Export (Pending backend API) -->
-                <button id="btn-export-pdf" class="btn btn-primary" style="position: relative;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <span>Export PDF</span>
-                    <span class="badge badge-archived" style="font-size: 0.65rem; padding: 2px 5px; margin-left: 6px; background: rgba(0,0,0,0.25);">Pending API</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- EXPORT STATUS NOTICE (Transparent disclosure) -->
-        <div id="export-status-alert" class="card" style="background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.3); padding: 12px 18px; margin-bottom: 22px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-primary);">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-cyan); flex-shrink: 0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                    <span>
-                        <strong>Export API Status:</strong> Automated server-side PDF and CSV generation endpoints are currently pending backend implementation. Use the <strong>Print / Save as PDF</strong> button for full printable dossiers.
-                    </span>
-                </div>
-            </div>
-        </div>
+  
 
         <!-- LOADING STATE -->
         <div id="rep-loading-state" class="card" style="display: none; text-align: center; padding: 60px 24px;">

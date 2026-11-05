@@ -506,7 +506,14 @@
         container.innerHTML = analystNames.map((name) => {
             const items = allocation[name] || [];
             const analystRecord = analystsList.find((a) => a.analyst_name === name);
-            const cap = analystRecord ? Number(analystRecord.available_hours) : 0;
+            const cap = analystRecord
+    ? Number(
+        analystRecord.capacity_hours ??
+        analystRecord.available_hours ??
+        analystRecord.capacity ??
+        0
+      )
+    : 0;
             const hours = items.reduce((s, it) => s + Number(it.examination_hours || 0), 0);
             const val = items.reduce((s, it) => s + Number(it.estimated_value || 0), 0);
 

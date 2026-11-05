@@ -1372,7 +1372,6 @@ def run_sensitivity(investigation_id):
 # ==============================
 # PYVIS NETWORK VISUALIZATION API
 # ==============================
-
 @main.route(
     "/api/investigations/<int:investigation_id>/network-graph",
     methods=["GET"]
@@ -1473,7 +1472,6 @@ def get_network_graph(investigation_id):
                 net.add_edge(
                     l.source_asset_id,
                     l.target_asset_id,
-                    value=l.cost,
                     title=f"MST Link: {l.link_id}\nCost: {l.cost}\nStatus: Selected by Kruskal",
                     label=f"{l.cost}",
                     color={"color": "#2DD4BF", "highlight": "#5EEAD4"},
@@ -1483,7 +1481,6 @@ def get_network_graph(investigation_id):
                 net.add_edge(
                     l.source_asset_id,
                     l.target_asset_id,
-                    value=l.cost,
                     title=f"Alternate Link: {l.link_id}\nCost: {l.cost}\nStatus: Accessible (Not in MST)",
                     label=f"{l.cost}",
                     color={"color": "rgba(148, 163, 184, 0.45)", "highlight": "#CBD5E1"},
@@ -1493,7 +1490,6 @@ def get_network_graph(investigation_id):
                 net.add_edge(
                     l.source_asset_id,
                     l.target_asset_id,
-                    value=l.cost,
                     title=f"Inaccessible Link: {l.link_id}\nCost: {l.cost}\nStatus: Inaccessible / Severed",
                     label=f"{l.cost} (blocked)",
                     color={"color": "#F87171", "highlight": "#EF4444"},
@@ -1504,19 +1500,22 @@ def get_network_graph(investigation_id):
         net.set_options("""
         var options = {
           "nodes": {
-            "font": { "color": "#F1F5F9", "size": 13, "face": "Inter, sans-serif" }
+            "font": { "color": "#F1F5F9", "size": 18, "face": "Inter, sans-serif" }
           },
           "edges": {
-            "font": { "color": "#94A3B8", "size": 11, "align": "top", "strokeWidth": 0 },
+            "font": { "color": "#E2E8F0", "size": 15, "align": "top",
+                      "strokeWidth": 4, "strokeColor": "#0B1220" },
             "smooth": { "type": "continuous" }
           },
           "physics": {
             "barnesHut": {
-              "gravitationalConstant": -4000,
-              "centralGravity": 0.3,
-              "springLength": 130,
-              "springConstant": 0.04
+              "gravitationalConstant": -9000,
+              "centralGravity": 0.25,
+              "springLength": 220,
+              "springConstant": 0.04,
+              "avoidOverlap": 0.6
             },
+            "stabilization": { "enabled": true, "iterations": 250 },
             "minVelocity": 0.75
           },
           "interaction": {
@@ -1529,7 +1528,36 @@ def get_network_graph(investigation_id):
         }
         """)
 
-        return net.generate_html(), 200, {"Content-Type": "text/html"}
+        html = net.generate_html()
+
+        extra_css = """
+        <style>
+          html, body { height: 100%; margin: 0; padding: 0; background: #0B1220 !important; overflow: hidden; }
+          center, h1 { display: none !important; }
+          .card { height: 100% !important; width: 100% !important; border: none !important;
+                  background: #0B1220 !important; margin: 0 !important; }
+          #mynetwork { width: 100% !important; height: 100vh !important;
+                       border: none !important; background: #0B1220 !important; }
+        </style>
+        """
+
+        fit_script = """
+        <script>
+          window.addEventListener("load", function () {
+            if (typeof network === "undefined") return;
+            network.once("stabilizationIterationsDone", function () {
+              network.fit({ animation: { duration: 600 } });
+              network.setOptions({ physics: false });
+            });
+            setTimeout(function () { network.fit(); }, 1800);
+          });
+        </script>
+        """
+
+        html = html.replace("</head>", extra_css + "</head>", 1)
+        html = html.replace("</body>", fit_script + "</body>", 1)
+
+        return html, 200, {"Content-Type": "text/html"}
 
     except Exception as exc:
         current_app.logger.error(
