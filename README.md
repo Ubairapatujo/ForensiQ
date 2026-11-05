@@ -537,14 +537,14 @@ Potential future improvements include:
 
 ## Contributors
 
-Developed as a collaborative academic project by a four-member team.
+## Team
 
----
+| Name | GitHub | Role |
+|---|---|---|
+| **Ubaira Patujo** | [@Ubairapatujo](https://github.com/Ubairapatujo) | **Repository Owner** |
+| Ammarah Farooqi | [@Ammarahfarooqi](https://github.com/Ammarahfarooqi) | Collaborator |
+| Saad Khan | [@Saadkhan0811](https://github.com/Saadkhan0811) | Collaborator |
+| Syed Talal Bin Rizwan | [@SYEDTALALBINRIZWAN2006](https://github.com/SYEDTALALBINRIZWAN2006) | Collaborator |
 
-## License
-
-No license has currently been specified.
-
----
 
 **ForensiQ — Bringing Algorithmic Intelligence to Digital Forensics.**
